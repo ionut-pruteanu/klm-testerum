@@ -2,7 +2,7 @@ test-def: Flight offers
 
     step: Given the HTTP mock server <<{{httpMockServer}}>> with the mock request <<{{Flight_selection}}>>
         var httpMockServer = <<
-            port: "60000"
+            port: "6767"
             
         >>
         var Flight_selection = <<
@@ -26,7 +26,7 @@ test-def: Flight offers
             nrOfBookingDaysToAttemptReservation: "3"
             context:
               accessToken: null
-              baseUrl: http://localhost:60000
+              baseUrl: http://localhost:6767
             
         >>
         var flightSearchResultVariables = <<

@@ -24,13 +24,14 @@
     <dependency>
       <groupId>com.testerum</groupId>
       <artifactId>testerum-steps-api</artifactId>
-      <version>1.0.37</version>
+      <version>3.5.2</version>
     </dependency>
 
+    <!-- testerum-junit -->
     <dependency>
       <groupId>com.testerum</groupId>
       <artifactId>testerum-junit</artifactId>
-      <version>develop-SNAPSHOT</version>
+      <version>3.5.4</version>
     </dependency>
 
     <!--==================== External Dependencies ====================-->
