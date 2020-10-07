@@ -1,0 +1,25 @@
+step-def: Given I am loggged in to Mashery
+
+    step: When I execute the HTTP request <<{{Mashery_http_request}}>>
+        var Mashery_http_request = <<
+            method: POST
+            url: "{{MASHERY_API}}"
+            followRedirects: true
+            headers:
+              Authorization: "Basic {{MASHERY_AUTHORIZATION}}"
+              Content-Type: application/x-www-form-urlencoded
+            body:
+              bodyType: X-WWW-FORM-URLENCODED
+              content: grant_type=client_credentials
+            
+        >>
+    step: Then the HTTP response should be <<{{verify_Mashery_access_token_is_present}}>>
+        var verify_Mashery_access_token_is_present = <<
+            expectedStatusCode: 200
+            expectedBody:
+              httpBodyVerifyMatchingType: JSON_VERIFY
+              httpBodyType: JSON
+              bodyVerify: "{\r\n  \"access_token\": \"@isNotEmpty()\"\r\n}"
+            
+        >>
+    step: Given the variable <<MASHERY_ACCESS_TOKEN>> with value <<{{httpResponse.jsonBody.access_token}}>>

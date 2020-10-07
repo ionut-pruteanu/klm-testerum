@@ -1,0 +1,10 @@
+{
+  "defaultVariables" : { },
+  "environments" : {
+    "ute3" : {
+      "FLIGHT_OFFER_API" : "https://api.ute3.klm.com",
+      "MASHERY_API" : "https://www.ute3.klm.com/oauthcust/oauth/token",
+      "MASHERY_AUTHORIZATION" : "eW4zdW51eXhzdHFtbWdyeDdyajl6YnM1OjNkRlVCQlF1M2M="
+    }
+  }
+}

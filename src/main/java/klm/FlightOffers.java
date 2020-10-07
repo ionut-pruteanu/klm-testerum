@@ -7,17 +7,14 @@ import com.testerum_api.testerum_steps_api.annotations.steps.When;
 import com.testerum_api.testerum_steps_api.services.TesterumServiceLocator;
 import com.testerum_api.testerum_steps_api.test_context.logger.TesterumLogger;
 import com.testerum_api.testerum_steps_api.test_context.test_vars.TestVariables;
-import java.time.LocalDate;
-import java.util.List;
-import klm.model.FlightOfferRequest;
-import klm.model.FlightOfferResponse;
 import klm.model.FlightDetails;
+import klm.model.FlightOfferResponse;
 import klm.model.FlightSearchResultVariables;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
+import okhttp3.*;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class FlightOffers {
     public static final MediaType APPLICATION_JSON = MediaType.parse("application/json; charset=utf-8");
@@ -59,8 +56,13 @@ public class FlightOffers {
         throws Exception {
 
         Request request = new Request.Builder()
-            .url(flightDetails.context.baseUrl + "/flights/offers")
-            .header("Authentication", "Basic " + flightDetails.context.accessToken)
+            .url(flightDetails.context.baseUrl + "/travel/offers/v1/available-offers")
+            .header("Authorization", "Bearer " + flightDetails.context.accessToken)
+            .header("Content-Type","application/json")
+            .header("AFKL-TRAVEL-Host","KL")
+            .header("Accept-Language","en-NL")
+            .header("Accept","application/hal+json;charset=UTF-8")
+
             .post(RequestBody.create(
                 APPLICATION_JSON,
                 getFlightOffersRequestAsJson(flightDetails, LocalDate.now())
@@ -68,17 +70,36 @@ public class FlightOffers {
             .build();
 
         try (Response response = client.newCall(request).execute()) {
-            return mapper.readValue(response.body().string(), new TypeReference<List<FlightOfferResponse>>() {});
+            String responeString = response.body().string();
+            System.out.println("responeString = " + responeString);
+            return mapper.readValue(responeString, new TypeReference<List<FlightOfferResponse>>() {});
         }
     }
 
     private String getFlightOffersRequestAsJson(FlightDetails flightDetails, LocalDate bookingDate) throws Exception {
-        FlightOfferRequest request = new FlightOfferRequest(
-            flightDetails.origin,
-            flightDetails.destination,
-            flightDetails.carrier,
-            bookingDate
-        );
-        return mapper.writeValueAsString(request);
+        return "{\n" +
+                "    \"commercialCabins\" : [ \"ECONOMY\" ],\n" +
+                "    \"minimumAccuracy\" : 100.0,\n" +
+                "    \"bookingFlow\" : \"LEISURE\",\n" +
+                "    \"passengers\" : [  {\n" +
+                "            \"id\": 1,\n" +
+                "            \"type\": \"ADT\",\n" +
+                "            \"minAge\": 25\n" +
+                "        }\n" +
+                "    ],\n" +
+                "    \"requestedConnections\" : [ {\n" +
+                "        \"departureDate\" : \""+bookingDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))+"\",\n" +
+                "        \"origin\" : {\n" +
+                "            \"airport\" : {\n" +
+                "                \"code\" : \""+flightDetails.origin+"\"\n" +
+                "            }\n" +
+                "        },\n" +
+                "        \"destination\" : {\n" +
+                "            \"airport\" : {\n" +
+                "                \"code\" : \""+flightDetails.destination+"\"\n" +
+                "            }\n" +
+                "        }\n" +
+                "    }]\n" +
+                "}";
     }
 }

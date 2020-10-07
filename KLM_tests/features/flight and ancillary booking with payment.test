@@ -1,0 +1,17 @@
+test-def: flight and ancillary booking with payment
+
+    step: Given I am loggged in to Mashery
+    step: When I select the flight <<{{flightDetails}}>> with the results stored in the variables <<{{flightSearchResultVariables}}>>
+        var flightDetails = <<
+            origin: AMS
+            destination: TPE
+            nrOfBookingDaysToAttemptReservation: "3"
+            context:
+              accessToken: "{{MASHERY_ACCESS_TOKEN}}"
+              baseUrl: "{{FLIGHT_OFFER_API}}"
+            
+        >>
+        var flightSearchResultVariables = <<
+            flightNumberVariableName: "123"
+            
+        >>
