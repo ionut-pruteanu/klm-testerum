@@ -7,18 +7,20 @@ import com.testerum_api.testerum_steps_api.annotations.steps.When;
 import com.testerum_api.testerum_steps_api.services.TesterumServiceLocator;
 import com.testerum_api.testerum_steps_api.test_context.logger.TesterumLogger;
 import com.testerum_api.testerum_steps_api.test_context.test_vars.TestVariables;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import klm.model.FlightDetails;
 import klm.model.SelectedFlight;
 import klm.model.http_response.FlightOfferResponse;
-import klm.model.FlightSearchResultVariables;
 import klm.model.http_response.Itinerary;
-import okhttp3.*;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class FlightOffers {
     public static final MediaType APPLICATION_JSON = MediaType.parse("application/json; charset=utf-8");
@@ -27,18 +29,25 @@ public class FlightOffers {
     private final TestVariables testVariables = TesterumServiceLocator.getTestVariables();
 
     private final ObjectMapper mapper = new ObjectMapper();
-    private final OkHttpClient client = new OkHttpClient();
-
     @When(value = "I select the flight <<flightDetails>>",
         description = ""
             + "Search and selects the best flight based on the provided details.\n"
-            + "If the flight is not available for today it will search the flight for the next days specified by `nrOfBookingDaysToAttemptReservation` parameter."
-            + "This step will select only direct flights")
+            + "If the flight is not available for today it will search the flight for the next days specified by `nrOfBookingDaysToAttemptReservation` parameter.\n"
+            + "This step will select only direct flights.\n"
+            + "\n"
+            + "Step Response:\n"
+            + "```\n"
+            + "SELECTED_FLIGHT\n"
+            + "    flightNumber: String\n"
+            + "    shoppingCartLink: String\n"
+            + "\n"
+            + "```")
     public void selectMatchingFlightOffers(@Param FlightDetails flightDetails) throws Exception {
 
         Itinerary selectedFlightOffer = null;
 
-        for (int reservationAttempts = 0; reservationAttempts < flightDetails.nrOfBookingDaysToAttemptReservation; reservationAttempts++) {
+        for (int reservationAttempts = 0; reservationAttempts < flightDetails.nrOfBookingDaysToAttemptReservation;
+            reservationAttempts++) {
 
             LocalDate bookingDate = LocalDate.now().plusDays(reservationAttempts);
             FlightOfferResponse flightOfferResponse = attemptFlightSelection(flightDetails, bookingDate);
@@ -63,6 +72,8 @@ public class FlightOffers {
             );
         }
     }
+
+    private final OkHttpClient client = new OkHttpClient();
 
     private List<Itinerary> findDirectFlight(FlightOfferResponse flightOfferResponse) {
         List<Itinerary> response = new ArrayList<>();
@@ -92,10 +103,10 @@ public class FlightOffers {
         Request request = new Request.Builder()
             .url(flightDetails.context.baseUrl + "/travel/offers/v1/available-offers")
             .header("Authorization", "Bearer " + flightDetails.context.accessToken)
-            .header("Content-Type","application/json")
-            .header("AFKL-TRAVEL-Host","KL")
-            .header("Accept-Language","en-NL")
-            .header("Accept","application/hal+json;charset=UTF-8")
+            .header("Content-Type", "application/json")
+            .header("AFKL-TRAVEL-Host", "KL")
+            .header("Accept-Language", "en-NL")
+            .header("Accept", "application/hal+json;charset=UTF-8")
 
             .post(RequestBody.create(
                 APPLICATION_JSON,
@@ -108,7 +119,7 @@ public class FlightOffers {
             if (response.code() != 200) {
                 throw new AssertionError(
                     "Get Flight Offers response is not OK (200). \n"
-                               + "Received Response:" + response.toString()
+                        + "Received Response:" + response.toString()
                 );
             }
 
@@ -120,28 +131,28 @@ public class FlightOffers {
 
     private String getFlightOffersRequestAsJson(FlightDetails flightDetails, LocalDate bookingDate) throws Exception {
         return "{\n" +
-                "    \"commercialCabins\" : [ \"ECONOMY\" ],\n" +
-                "    \"minimumAccuracy\" : 100.0,\n" +
-                "    \"bookingFlow\" : \"LEISURE\",\n" +
-                "    \"passengers\" : [  {\n" +
-                "            \"id\": 1,\n" +
-                "            \"type\": \"ADT\",\n" +
-                "            \"minAge\": 25\n" +
-                "        }\n" +
-                "    ],\n" +
-                "    \"requestedConnections\" : [ {\n" +
-                "        \"departureDate\" : \""+bookingDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))+"\",\n" +
-                "        \"origin\" : {\n" +
-                "            \"airport\" : {\n" +
-                "                \"code\" : \""+flightDetails.origin+"\"\n" +
-                "            }\n" +
-                "        },\n" +
-                "        \"destination\" : {\n" +
-                "            \"airport\" : {\n" +
-                "                \"code\" : \""+flightDetails.destination+"\"\n" +
-                "            }\n" +
-                "        }\n" +
-                "    }]\n" +
-                "}";
+            "    \"commercialCabins\" : [ \"ECONOMY\" ],\n" +
+            "    \"minimumAccuracy\" : 100.0,\n" +
+            "    \"bookingFlow\" : \"LEISURE\",\n" +
+            "    \"passengers\" : [  {\n" +
+            "            \"id\": 1,\n" +
+            "            \"type\": \"ADT\",\n" +
+            "            \"minAge\": 25\n" +
+            "        }\n" +
+            "    ],\n" +
+            "    \"requestedConnections\" : [ {\n" +
+            "        \"departureDate\" : \"" + bookingDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + "\",\n" +
+            "        \"origin\" : {\n" +
+            "            \"airport\" : {\n" +
+            "                \"code\" : \"" + flightDetails.origin + "\"\n" +
+            "            }\n" +
+            "        },\n" +
+            "        \"destination\" : {\n" +
+            "            \"airport\" : {\n" +
+            "                \"code\" : \"" + flightDetails.destination + "\"\n" +
+            "            }\n" +
+            "        }\n" +
+            "    }]\n" +
+            "}";
     }
 }
