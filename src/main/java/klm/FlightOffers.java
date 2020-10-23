@@ -7,9 +7,13 @@ import com.testerum_api.testerum_steps_api.annotations.steps.When;
 import com.testerum_api.testerum_steps_api.services.TesterumServiceLocator;
 import com.testerum_api.testerum_steps_api.test_context.logger.TesterumLogger;
 import com.testerum_api.testerum_steps_api.test_context.test_vars.TestVariables;
+import java.util.ArrayList;
+import java.util.Collections;
 import klm.model.FlightDetails;
-import klm.model.FlightOfferResponse;
+import klm.model.SelectedFlight;
+import klm.model.http_response.FlightOfferResponse;
 import klm.model.FlightSearchResultVariables;
+import klm.model.http_response.Itinerary;
 import okhttp3.*;
 
 import java.time.LocalDate;
@@ -25,34 +29,64 @@ public class FlightOffers {
     private final ObjectMapper mapper = new ObjectMapper();
     private final OkHttpClient client = new OkHttpClient();
 
-    @When(value = "I select the flight <<flightDetails>> with the results stored in the variables <<flightSearchResultVariables>>",
+    @When(value = "I select the flight <<flightDetails>>",
         description = ""
             + "Search and selects the best flight based on the provided details.\n"
-            + "If the flight is not available for today it will search the flight for the next days specified by `nrOfBookingDaysToAttemptReservation` parameter")
-    public void selectMatchingFlightOffers(
-        @Param FlightDetails flightDetails,
-        @Param FlightSearchResultVariables flightSearchResultVariables) throws Exception {
+            + "If the flight is not available for today it will search the flight for the next days specified by `nrOfBookingDaysToAttemptReservation` parameter."
+            + "This step will select only direct flights")
+    public void selectMatchingFlightOffers(@Param FlightDetails flightDetails) throws Exception {
 
-        FlightOfferResponse selectedFlightOffer = null;
+        Itinerary selectedFlightOffer = null;
 
         for (int reservationAttempts = 0; reservationAttempts < flightDetails.nrOfBookingDaysToAttemptReservation; reservationAttempts++) {
 
             LocalDate bookingDate = LocalDate.now().plusDays(reservationAttempts);
-            List<FlightOfferResponse> flightOffers = attemptFlightSelection(flightDetails, bookingDate);
+            FlightOfferResponse flightOfferResponse = attemptFlightSelection(flightDetails, bookingDate);
 
-            if (!flightOffers.isEmpty()) {
-                selectedFlightOffer = flightOffers.get(0);
+            List<Itinerary> directFlights = findDirectFlight(flightOfferResponse);
+            if (!directFlights.isEmpty()) {
+                selectedFlightOffer = directFlights.get(0);
                 break;
             }
         }
 
         if (selectedFlightOffer != null) {
-            logger.info("Selected flight number: " + selectedFlightOffer.getFlightNumber());
-            testVariables.set(flightSearchResultVariables.flightNumberVariableName, selectedFlightOffer.getFlightNumber());
+            SelectedFlight selectedFlight = new SelectedFlight();
+            selectedFlight.flightNumber = selectedFlightOffer.connections.get(0).segments.get(0).marketingFlight.number;
+            selectedFlight.shoppingCartLink = selectedFlightOffer.flightProducts.get(0)._links.shoppingCart.href;
+
+            logger.info("Selected flight: " + selectedFlight.toString());
+            testVariables.set("SELECTED_FLIGHT", selectedFlight);
+        } else {
+            throw new AssertionError(
+                "No direct flights found for the request: " + flightDetails.toString()
+            );
         }
     }
 
-    private List<FlightOfferResponse> attemptFlightSelection(FlightDetails flightDetails, LocalDate bookingDate)
+    private List<Itinerary> findDirectFlight(FlightOfferResponse flightOfferResponse) {
+        List<Itinerary> response = new ArrayList<>();
+
+        if (flightOfferResponse == null || flightOfferResponse.itineraries == null) {
+            return Collections.emptyList();
+        }
+
+        for (Itinerary itinerary : flightOfferResponse.itineraries) {
+            if (itinerary.connections.isEmpty()) {
+                continue;
+            }
+
+            if (itinerary.connections.get(0).segments.size() != 1) {
+                continue;
+            }
+
+            response.add(itinerary);
+        }
+
+        return response;
+    }
+
+    private FlightOfferResponse attemptFlightSelection(FlightDetails flightDetails, LocalDate bookingDate)
         throws Exception {
 
         Request request = new Request.Builder()
@@ -70,9 +104,17 @@ public class FlightOffers {
             .build();
 
         try (Response response = client.newCall(request).execute()) {
+
+            if (response.code() != 200) {
+                throw new AssertionError(
+                    "Get Flight Offers response is not OK (200). \n"
+                               + "Received Response:" + response.toString()
+                );
+            }
+
             String responeString = response.body().string();
             System.out.println("responeString = " + responeString);
-            return mapper.readValue(responeString, new TypeReference<List<FlightOfferResponse>>() {});
+            return mapper.readValue(responeString, new TypeReference<FlightOfferResponse>() {});
         }
     }
 
